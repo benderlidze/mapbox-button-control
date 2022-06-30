@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <script src="https://www.moneybutton.com/moneybutton.js"></script>
+    <style>
+        @font-face {
+            font-family: 'futuraBold';
+            src: url("fonts/Futura Bold.otf") format("opentype");
+        }
+
+        @font-face {
+            font-family: 'futuraBook';
+            src: url("fonts/Futura Book.otf") format("opentype");
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'futuraBook', Arial, Helvetica, sans-serif;
+        }
+
+        h3 {
+            padding: 0;
+            margin: 0;
+            color: #2f2f2f;
+            font-weight: bold;
+            font: 20px Helvetica Neue, Arial, Helvetica, sans-serif;
+
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 140px;
+            left: 140px;
+            background: rgba(255, 255, 255, 0.8);
+            font-family: Arial, sans-serif;
+            overflow-y: overlay;
+            box-shadow: 0 0px 0px rgba(0, 0, 0, 0.5);
+            height: 550px;
+            width: 350px;
+            display: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            color: #2f2f2f;
+
+        }
+
+        #legend {
+            position: absolute;
+            top: 45px;
+            left: 10px;
+        }
+
+        #menuIcon {
+            position: absolute;
+            top: 45px;
+            left: 10px;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: auto auto;
+        }
+
+        .grid-item {
+            /* background-color: rgba(255, 255, 255, 0.8); */
+            border: 0px solid rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            font-size: 30px;
+            text-align: center;
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        .imgbtn {
+            padding: 0px;
+            margin: 1px;
+            width: 100px;
+            height: 100px;
+            background-position: center;
+            /* Center the image */
+            background-repeat: no-repeat;
+            /* Do not repeat the image */
+            background-size: cover;
+            cursor: pointer;
+            filter: grayscale(100%);
+            background-color: transparent;
+        }
+
+
+        .selected {
+            filter: grayscale(0%)
+        }
+
+        #logo {
+            position: absolute;
+            z-index: 1200;
+            bottom: 0px;
+            right: 0px;
+            padding: 20px;
+
+        }
+
+        #logo img {
+            width: 300px;
+        }
+
+        /* .mapboxgl-popup-content {
+            max-height: 600px !important;
+            overflow-y: auto;
+            width: 400px;
+        } */
+
+        @media screen and (max-width: 992px) {
+            .imgbtn {
+                width: 73px;
+                height: 73px;
+            }
+
+            #legend {
+                position: absolute;
+                top: 45px;
+                left: 10px;
+            }
+
+            .mapboxgl-popup-content {
+                max-height: 600px !important;
+                overflow-y: auto;
+                width: 300px !important;
+                box-shadow: 0 1px 20px rgb(0 10 0 / 50%);
+            }
+
+            .mapboxgl-popup {
+                z-index: 1000
+            }
+
+            #logo img {
+                width: 200px;
+            }
+        }
+
+
+
+
+        /*the container must be positioned relative:*/
+        .autocomplete {
+            position: absolute;
+            display: inline-block;
+            top: 20px;
+            left: 20px;
+
+        }
+
+        input {
+            border: 1px solid gray;
+            background-color: #f1f1f1;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        input[type=text] {
+            background-color: #f1f1f1;
+            width: 100%;
+        }
+
+        input[type=submit] {
+            background-color: DodgerBlue;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-bottom: none;
+            border-top: none;
+            z-index: 1099;
+            /*position the autocomplete items to be the same width as the container:*/
+            top: 100%;
+            left: 0;
+            right: 0;
+        }
+
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            border-bottom: 1px solid #d4d4d4;
+        }
+
+        /*when hovering an item:*/
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
+
+        /*when navigating through the items using the arrow keys:*/
+        .autocomplete-active {
+            background-color: DodgerBlue !important;
+            color: #ffffff;
+        }
+
+        #menu {
+            background: #fff;
+            position: absolute;
+            z-index: 1;
+            top: 10px;
+            right: 10px;
+            border-radius: 3px;
+            width: 120px;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        #menu a {
+            font-size: 13px;
+            color: #404040;
+            display: block;
+            margin: 0;
+            padding: 0;
+            padding: 10px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+
+        #menu a:last-child {
+            border: none;
+        }
+
+        #menu a:hover {
+            background-color: #f8f8f8;
+            color: #404040;
+        }
+
+        #menu a.active {
+            background-color: #3887be;
+            color: #ffffff;
+        }
+
+        #menu a.active:hover {
+            background: #3074a4;
+        }
+
+        #info {
+            padding: 10px;
+            z-index: 1100;
+        }
+
+        .sidenav {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            right: 0;
+            background-color: white;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            z-index: 1200;
+        }
+
+        .sidenav a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 25px;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .sidenav a:hover {
+            color: #f1f1f1;
+        }
+
+        .sidenav .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+
+        @media screen and (max-height: 450px) {
+            .sidenav {
+                padding-top: 15px;
+            }
+
+            .sidenav a {
+                font-size: 18px;
+            }
+        }
+
+        .button {
+            margin: 10px 0px;
+            /* border: 2px solid rgb(3, 0, 175); */
+            border-radius: 25px;
+            cursor: pointer;
+            text-align: center;
+            background-color: #ffc200;
+            padding: 16px;
+            font-size: 11pt;
+            color: #013c58;
+            width: 150px;
+            font-family: 'futuraBold';
+
+        }
+
+
+
+        .arrow {
+            border: solid black;
+            border-width: 0 3px 3px 0;
+            display: inline-block;
+            padding: 3px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: 0.5s;
+            transform: rotate(-135deg);
+            -webkit-transform: rotate(-135deg);
+        }
+
+        #leftBottom {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+        }
+
+
+
+        #resetButton {
+            position: absolute;
+            bottom: 105px;
+            left: 5px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px;
+        }
+
+        #resetButton:hover {
+            background-color: #eeeeee;
+        }
+
+        #leftBottom {
+            border: 2px solid rgb(207, 207, 207);
+            border-radius: 5px;
+        }
+
+        .mapboxgl-ctrl-bottom-left {
+            bottom: 150px;
+            /* border: 1px solid red; */
+        }
+
+        .mapboxgl-ctrl-logo {
+            display: none;
+        }
+
+        .tour-image {
+            width: 100%;
+            border-radius: 12px 12px 0px 0px;
+        }
+
+        .popup3d {
+            font-family: 'futuraBook';
+            max-width: 350px !important;
+        }
+
+        .mapboxgl-popup-content {
+            margin: 0px !important;
+            padding: 0px !important;
+            border-radius: 12px !important;
+            /* background: #9db3be; */
+        }
+
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            align-content: center;
+            flex-wrap: nowrap;
+        }
+
+        .descr {
+            position: absolute;
+            bottom: 0px;
+            color: white;
+            padding: 10px;
+            font-size: 12pt;
+            text-shadow: 0 0 3px black;
+        }
+
+        .title {
+            font-size: 16pt;
+            font-family: 'futuraBold';
+        }
+
+        .mapboxgl-popup-close-button {
+            display: flex;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            border: 0;
+            /* border-radius: 0 3px 0 0; */
+            cursor: pointer;
+            /* background-color: transparent; */
+            border-radius: 100px;
+            padding: 10px;
+            width: 30px;
+            height: 30px;
+            font-size: 30px;
+            color: #ffffff73;
+            background-color: #00000059;
+            justify-content: center;
+            align-items: center;
+            align-content: center;
+        }
+
+        /* .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+      align-self: center;
+      border-bottom: none;
+      border-top-color: #9db3be;
+    }
+
+    .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+      align-self: center;
+      border-top: none;
+      border-bottom-color: #9db3be;
+    } */
+
+        .description {
+            color: #013c58;
+            padding: 5px 15px;
+        }
+
+
+        /* // From: Pitch toggle control for Mapbox GL JS — http://fuzzytolerance.info/blog/2017/01/30/Pitch-toggle-control-for-Mapbox-GL-JS/ */
+        .mapboxgl-ctrl-pitchtoggle-3d {
+            background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+ICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjM1ZW0iIHN0eWxlPSJmb250LXNpemU6IDE0cHg7IGZvbnQtZmFtaWx5OiAnSGVsdmV0aWNhIE5ldWUnLEFyaWFsLEhlbHZldGljYSxzYW5zLXNlcmlmOyBmb250LXdlaWdodDogYm9sZDsgdGV4dC1hbmNob3I6IG1pZGRsZTsiPjNEPC90ZXh0Pjwvc3ZnPg==);
+        }
+
+        .mapboxgl-ctrl-pitchtoggle-2d {
+            background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+ICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjM1ZW0iIHN0eWxlPSJmb250LXNpemU6IDE0cHg7IGZvbnQtZmFtaWx5OiAnSGVsdmV0aWNhIE5ldWUnLEFyaWFsLEhlbHZldGljYSxzYW5zLXNlcmlmOyBmb250LXdlaWdodDogYm9sZDsgdGV4dC1hbmNob3I6IG1pZGRsZTsiPjJEPC90ZXh0Pjwvc3ZnPg==);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="mySidenav" class="sidenav">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <div id="info"></div>
+    </div>
+
+    <div id="map"></div>
+    <div id="logo" style="display: none;">
+        <img src="" alt="" style="opacity: 0.5;width:150px;">
+        <div id="payButton"></div>
+    </div>
+
+    <script>
+        const GEO = [];
+        const payButton = document.getElementById("payButton")
+        const leftBottom = document.getElementById("leftBottom")
+        const filters = document.getElementById("filters")
+        const info = document.getElementById("info")
+        const mainData = [];
+        const colors = ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462", "#b3de69", "#fccde5", "#d9d9d9", "#bc80bd", "#ccebc5", "#ffed6f"];
+
+        mapboxgl.accessToken = 'pk.eyJ1Ijoic2t5c2NvcGVpbWFnZXJ5IiwiYSI6ImNqb25lbTA0NjE3MHAzd2xzcnJ3Y2drd2EifQ.4emSCixiAbYDtOirnnepXQ';
+        var map = new mapboxgl.Map({
+            container: 'map',
+            // style: 'mapbox://styles/skyscopeimagery/ckw9swn3g2b4b14s00bpp7l99',
+            style: 'mapbox://styles/skyscopeimagery/cky4sjk206oyr14rubx8bofbi/draft',
+            center: { lng: -123.4621811747862, lat: 48.51989823534109 },
+            zoom: 9.4,
+            logoPosition: 'bottom-right',
+            minZoom: 9.4,
+
+            maxBounds: [[-123.95428502700423, 48.31304593662415], [-122.97007732256779, 48.73524236269387]]
+        });
+
+        class PitchToggle {
+            constructor({ bearing = -20, pitch = 70, minpitchzoom = null }) {
+                this._bearing = bearing;
+                this._pitch = pitch;
+                this._minpitchzoom = minpitchzoom;
+            }
+
+            onAdd(map) {
+                this._map = map;
+                let _this = this;
+
+                this._btn = document.createElement("button");
+                this._btn.className = "mapboxgl-ctrl-icon mapboxgl-ctrl-pitchtoggle-3d";
+                this._btn.type = "button";
+                this._btn["aria-label"] = "Toggle Pitch";
+                this._btn.onclick = function () {
+                    if (map.getPitch() === 0) {
+                        let options = { pitch: _this._pitch, bearing: _this._bearing };
+                        if (_this._minpitchzoom && map.getZoom() > _this._minpitchzoom) {
+                            options.zoom = _this._minpitchzoom;
+                        }
+                        map.easeTo(options);
+                        _this._btn.className =
+                            "mapboxgl-ctrl-icon mapboxgl-ctrl-pitchtoggle-2d";
+                    } else {
+                        map.easeTo({ pitch: 0, bearing: 0 });
+                        _this._btn.className =
+                            "mapboxgl-ctrl-icon mapboxgl-ctrl-pitchtoggle-3d";
+                    }
+                };
+
+                this._container = document.createElement("div");
+                this._container.className = "mapboxgl-ctrl-group mapboxgl-ctrl";
+                this._container.appendChild(this._btn);
+
+                return this._container;
+            }
+
+            onRemove() {
+                this._container.parentNode.removeChild(this._container);
+                this._map = undefined;
+            }
+        }
+
+        // Add zoom and rotation controls to the map.
+        const zoom = map.addControl(new mapboxgl.NavigationControl());
+        // Add geolocate control to the map.
+        map.addControl(
+            new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                // When active the map will receive updates to the device's location as it changes.
+                trackUserLocation: true,
+                // Draw an arrow next to the location dot to indicate which direction the device is heading.
+                showUserHeading: true
+            })
+        );
+        map.addControl(new PitchToggle({ minpitchzoom: 11 }), "top-right");
+        
+        map.on('load', () => {
+
+
+
+            map.addLayer(
+                {
+                    'id': 'add-3d-buildings',
+                    'source': 'composite',
+                    'source-layer': 'building',
+                    'filter': ['==', 'extrude', 'true'],
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-color': '#aaa',
+
+                        // Use an 'interpolate' expression to
+                        // add a smooth transition effect to
+                        // the buildings as the user zooms in.
+                        'fill-extrusion-height': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'height']
+                        ],
+                        'fill-extrusion-base': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            15,
+                            0,
+                            15.05,
+                            ['get', 'min_height']
+                        ],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                }
+            );
+
+
+            map.loadImage('BrowserIcon.png', (error, image) => {
+                if (error) throw error;
+                // Add the image to the map style.
+                map.addImage('icon', image);
+            })
+
+            map.addSource('pins', {
+                'type': 'geojson',
+                'data': {
+                    type: "FeatureCollection",
+                    features: []
+                },
+                cluster: true,
+                clusterMaxZoom: 14, // Max zoom to cluster points on
+                clusterRadius: 50, //
+
+            });
+
+
+
+            map.addLayer({
+                id: 'clusters',
+                type: 'circle',
+                source: 'pins',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': '#013c58',
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'],
+                        20,
+                        100,
+                        30,
+                        750,
+                        40
+                    ]
+                }
+            });
+
+            map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'pins',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
+                },
+                paint: {
+                    'text-color': '#ffc200'
+                }
+
+            });
+
+            // map.addLayer({
+            //   id: 'unclustered-point',
+            //   type: 'circle',
+            //   source: 'earthquakes',
+            //   filter: ['!', ['has', 'point_count']],
+            //   paint: {
+            //     'circle-color': '#11b4da',
+            //     'circle-radius': 4,
+            //     'circle-stroke-width': 1,
+            //     'circle-stroke-color': '#fff'
+            //   }
+            // });
+            // map.addLayer({
+            //   'id': 'labels',
+            //   'type': 'symbol',
+            //   'source': 'pins',
+            //   'layout': {
+            //     'text-field': ['get', 'Adress'],
+            //     'text-variable-anchor': ['bottom'],
+            //     'text-radial-offset': 0.5,
+            //     'text-justify': 'auto',
+            //   },
+            //   "minzoom": 15,
+            // });  
+
+            map.addLayer({
+                'id': 'pins',
+                'type': 'symbol',
+                'source': 'pins', // reference the data source
+                'layout': {
+                    'icon-image': 'icon', // reference the image
+                    'icon-size': 0.35,
+                    'icon-allow-overlap': true
+                },
+                filter: ['!', ['has', 'point_count']],
+            });
+
+            // map.addLayer({
+            //   'id': 'selected',
+            //   'type': 'circle',
+            //   'source': 'pins',
+            //   'paint': {
+            //     'circle-radius': 8,
+            //     'circle-color': 'orange',
+            //     'circle-opacity': 1
+            //   },
+            //   "filter": ["==", ['get', 'bygningsnavn'], "NULL"] //hide all labels on init 
+            // });
+
+            // map.addLayer({
+            //   'id': 'pins',
+            //   'type': 'circle',
+            //   'source': 'pins',
+            //   'paint': {
+            //     'circle-radius': 5,
+            //     'circle-color': ['get', 'color'],
+            //     'circle-opacity': 1
+            //   },
+            // });
+
+            map.on('mouseenter', 'pins', mouseEnter);
+            map.on('mouseleave', 'pins', mouseLeave);
+            map.on('click', 'pins', function (e) {
+                var coordinates = e.features[0].geometry.coordinates.slice();
+                var data = e.features[0].properties;
+                const description = getDescr(data)
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+                // map.setFilter('selected', ["==", ['get', "id"], data['id']]);
+                new mapboxgl.Popup({ className: "popup3d" })
+                    .setLngLat(coordinates)
+                    .setHTML(description)
+                    .addTo(map);
+
+                setTimeout(() => {
+                    const div = document.getElementById('pay-button')
+                    moneyButton.render(div, {
+                        to: "ryan@moneybutton.com",
+                        amount: "1",
+                        currency: "USD",
+                        label: "Wait...",
+                        clientIdentifier: "some public client identifier",
+                        buttonId: "234325",
+                        buttonData: "{}",
+                        type: "tip",
+                        onPayment: function (arg) { console.log('onPayment', arg) },
+                        onError: function (arg) { console.log('onError', arg) }
+                    })
+                }, 1000);
+
+
+                map.flyTo({
+                    center: coordinates,
+                    zoom: 15
+                })
+            });
+
+            map.on('click', 'clusters', (e) => {
+                const features = map.queryRenderedFeatures(e.point, {
+                    layers: ['clusters']
+                });
+                const clusterId = features[0].properties.cluster_id;
+                map.getSource('pins').getClusterExpansionZoom(
+                    clusterId,
+                    (err, zoom) => {
+                        if (err) return;
+
+                        map.easeTo({
+                            center: features[0].geometry.coordinates,
+                            zoom: zoom + 1
+                        });
+                    }
+                );
+            });
+
+            map.on('mouseenter', 'clusters', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'clusters', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTt1IpQuJ9oz6xijANnNCHcpoY6bDhGj8FmxkACS2UrbUPFnf86J6HENbUH0elBtoGQous4sixp36Zn/pub?output=csv")
+                .then(data => {
+                    data.forEach((element, key) => {
+                        element.id = key
+                    });
+                    mainData.push(...data)
+                    showPins(mainData);
+                })
+        })
+
+        function mouseEnter(e) {
+            const id = e.features[0].properties.id
+            console.log(id);
+            map.getCanvas().style.cursor = 'pointer';
+            // map.setLayoutProperty("pins", "icon-size",
+            //   [
+            //     'match',
+            //     ['get', 'id'],
+            //     id, 0.5,
+            //     0.35
+            //   ])
+
+            let i = 0;
+
+            function animateMarker(time) {
+
+                time += 0.02
+                const hoveredSize = 0.35 + time
+
+                map.setLayoutProperty("pins", "icon-size",
+                    [
+                        'match',
+                        ['get', 'id'],
+                        id, hoveredSize,
+                        0.35
+                    ])
+                // Request the next frame of the animation.
+
+                if (hoveredSize < 0.5) requestAnimationFrame(() => animateMarker(time));
+                return;
+            }
+
+            // Start the animation.
+            animateMarker(i);
+
+        }
+        function mouseLeave() {
+            map.getCanvas().style.cursor = '';
+            map.setLayoutProperty("pins", "icon-size", 0.35)
+        }
+
+        function showPins(data) {
+
+            console.log('data', data);
+            //mainData.length = 0;
+            collection = data.filter(i => i.lat !== "").map(d => {
+                d.search = d.Adress
+                // let color = (+d['Scan finished 1= Yes 0= No'] === 1) ? 'green' : 'red';
+                const color = 'red'
+                return {
+                    "type": "Feature",
+                    "geometry": { "type": "Point", "coordinates": [+d['lng'], +d['lat']] },
+                    "properties": {
+                        color,
+                        ...d
+                    },
+                }
+            })
+            console.log('collection', collection);
+            map.getSource('pins').setData({ type: "FeatureCollection", features: collection })
+
+        }
+
+
+        function getDescr(data) {
+
+            const description = `
+                    <div class="container">
+                      <div style="position: relative;">
+                          <img src="${data['image']}" class="tour-image" style="width:100%;">
+                          <div class="descr">
+                            <div class="title">${data['name']}</div>
+                            <div>${data['location']}</div>
+                            <div>${data['date captured']}</div>
+                          </div>
+                      </div>
+                      <div class="description">${data['description']}</div>
+                      <div class="button" link="${data['3dTourLink']}">Enter MetaTour</div>
+                      </div>
+                      `;
+            return description;
+            // <div id="pay-button"></div>
+            // <div class="button" link="${data['3dTourLink']}">Enter MetaTour</div>
+        }
+
+        document.addEventListener("click", e => {
+
+            if (e.target.classList.contains("button")) {
+                const link = e.target.getAttribute("link")
+                console.log(e.target);
+                // window.open(link, '_blank');
+                // window.open(link, '_self');
+
+                top.window.location.href = link
+                // try {
+                //   top.window.location.href = link
+                // }
+                // catch (e) {
+                //   window.location.href = link
+                // }
+
+            }
+        })
+
+    </script>
+</body>
+
+</html>
