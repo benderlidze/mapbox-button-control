@@ -599,12 +599,24 @@
                 'id': 'gb',
                 'type': 'circle',
                 'source': 'gb',
-                'minzoom': 12.5,
+                'visibility': 'none',
                 'paint': {
                     'circle-radius': 6,
-                    'circle-color': '#fdc20f'
+                    'circle-color': '#fdc20f',
+                    "circle-opacity": 0,
+                    "circle-opacity-transition": { duration: 2000 },
                 },
             });
+
+            map.on("zoom", () => {
+                console.log('map.getZoom()', map.getZoom());
+                const zoom = map.getZoom()
+                if (zoom >= 12) {
+                    map.setPaintProperty('gb', 'circle-opacity', 1);
+                } else {
+                    map.setPaintProperty('gb', 'circle-opacity', 0);
+                }
+            })
 
             map.addLayer(
                 {
