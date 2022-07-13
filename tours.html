@@ -567,10 +567,43 @@
             })
         );
         map.addControl(new PitchToggle({ minpitchzoom: 11 }), "top-right");
-        
+
         map.on('load', () => {
 
+            d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTdLmD5V1HJOIhXjCOttf2K0MSQoRV_qAFNyMfK-GefiyG17pJtnC23HQeS8WFka-Edsb9uAmYOn42Q/pub?output=csv")
+                .then(data => {
+                    console.log('data', data);
+                    const pins = data.map(pin => {
+                        const { property_latitude, property_longitude } = pin
+                        return {
+                            "type": "Feature", "properties": { ...pin, },
+                            "geometry": {
+                                "type": "Point", "coordinates": [+pin['GPS longitude'], +pin['GPS latitude']]
+                            }
+                        }
+                    })
+                    const featureCollection = turf.featureCollection(pins)
+                    map.getSource("gb").setData(featureCollection)
 
+                })
+
+
+            map.addSource('gb', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': []
+                }
+            });
+            map.addLayer({
+                'id': 'gb',
+                'type': 'circle',
+                'source': 'gb',
+                'paint': {
+                    'circle-radius': 6,
+                    'circle-color': '#fdc20f'
+                },
+            });
 
             map.addLayer(
                 {
