@@ -573,10 +573,10 @@
             d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTdLmD5V1HJOIhXjCOttf2K0MSQoRV_qAFNyMfK-GefiyG17pJtnC23HQeS8WFka-Edsb9uAmYOn42Q/pub?output=csv")
                 .then(data => {
                     console.log('data', data);
-                    const pins = data.map(pin => {
+                    const pins = data.map((pin, key) => {
                         const { property_latitude, property_longitude } = pin
                         return {
-                            "type": "Feature", "properties": { ...pin, },
+                            "type": "Feature", "properties": { ...pin, id: key },
                             "geometry": {
                                 "type": "Point", "coordinates": [+pin['GPS longitude'], +pin['GPS latitude']]
                             }
@@ -593,13 +593,12 @@
                 'data': {
                     'type': 'FeatureCollection',
                     'features': []
-                }
+                },
             });
             map.addLayer({
                 'id': 'gb',
                 'type': 'circle',
                 'source': 'gb',
-                'visibility': 'none',
                 'paint': {
                     'circle-radius': 6,
                     'circle-color': '#fdc20f',
@@ -607,9 +606,39 @@
                     "circle-opacity-transition": { duration: 2000 },
                 },
             });
+            map.addLayer({
+                'id': 'gb_size',
+                'type': 'circle',
+                'source': 'gb',
+                'paint': {
+                    'circle-radius': 6,
+                    'circle-color': '#fdc20f',
+                    "circle-radius-transition": { duration: 300 },
+                },
+                filter: ['==', 'id', -1]
+            });
+            map.on('mouseenter', 'gb', e => {
+                if (map.getZoom() < 12) return;
+                const id = e.features[0].properties['id'];
+                map.getCanvas().style.cursor = 'pointer';
+                map.setFilter("gb_size", ['==', 'id', id])
+                map.setPaintProperty('gb_size', 'circle-opacity', 1);
+                map.setPaintProperty('gb_size', 'circle-radius', 20);
+            });
+            map.on('mouseleave', 'gb', () => {
+                map.getCanvas().style.cursor = '';
+                map.setPaintProperty('gb_size', 'circle-opacity', 0);
+                map.setPaintProperty('gb_size', 'circle-radius', 6);
+                //map.setFilter("gb_size", ['==', 'id', -1])
+            });
+            map.on('click', 'gb', function (e) {
+                var data = e.features[0].properties;
+                console.log('', e.features[0].properties);
+                const link = data['Link to Skyway']
+                window.open(link, "_blank");
+            });
 
             map.on("zoom", () => {
-                console.log('map.getZoom()', map.getZoom());
                 const zoom = map.getZoom()
                 if (zoom >= 12) {
                     map.setPaintProperty('gb', 'circle-opacity', 1);
