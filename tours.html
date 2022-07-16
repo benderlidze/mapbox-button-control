@@ -635,7 +635,8 @@
                 var data = e.features[0].properties;
                 console.log('', e.features[0].properties);
                 const link = data['Link to Skyway']
-                window.open(link, "_blank");
+                //window.open(link, "_blank");
+                top.window.location.href = link
             });
 
             map.on("zoom", () => {
